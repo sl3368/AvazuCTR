@@ -4,6 +4,7 @@ from collections import defaultdict
 
 
 #TODO: Include special features for when device id and device ip
+#Class for building fingerprint from all the categories in the competition
 class feature_builder:
 
     def construct_feature_dict(self,feature_list):

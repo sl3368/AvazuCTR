@@ -9,8 +9,7 @@ from pybrain.tools.shortcuts import buildNetwork
 from pybrain.supervised.trainers import BackpropTrainer
 from pybrain.structure import SoftmaxLayer
 from sklearn.metrics import log_loss
-
-from AvazuCTR.AvazuCTR.build_features import feature_builder
+from build_features import feature_builder
 
 
 #TODO: Run models on more balanced training set
@@ -24,12 +23,16 @@ def write_to_submission(ids,probs):
         out.write(ids[i]+','+str(prob)+'\n')
     print 'WROTE TO: prediction.txt'
 
+#Method for getting probabilities from pybrain
 def get_probs_from_nn(trainer,test_features,fp_length):
-    test_set=ClassificationDataSet(fp_length)
+    test_set=ClassificationDataSet(fp_length,1)
     for k in range(len(test_features)):
-        test_set.appendLinked(test_features[k])
+        test_set.appendLinked(test_features[k],[test_features[k][0]])
+
+    #THIS REQUIRES AN EDIT IN PYBRAIN CODE!!
     return trainer.testOnClassData(dataset=test_set,return_probs=True)
 
+#superfluous method currently, could be useful when expanding ensemble
 def create_model_list(RF,EF,NN):
     model_list=[]
     if RF:
@@ -39,6 +42,7 @@ def create_model_list(RF,EF,NN):
     if NN:
         model_list.append('NN')
 
+#Sample all data to create a training set
 def create_training_set(mapper,TrainingPercent):
     start=time.time()
     print 'PARSING FILE AND BUILDING SET...'
@@ -64,6 +68,7 @@ def create_training_set(mapper,TrainingPercent):
     print 'SET SIZE: '+str(len(training_targets))
     return training_features,training_targets
 
+#Train a neural net via full batch learning
 def nn_train_full(training_features,training_targets,fp_length,hidden_layer=None):
     if hidden_layer is None:
         hidden_layer=fp_length
@@ -80,6 +85,7 @@ def nn_train_full(training_features,training_targets,fp_length,hidden_layer=None
     print 'FINISHED TRAINING...TOOK: '+str(time.time()-start)
     return trainer
 
+#Train a neural for online learning
 def nn_train_online(training_features,training_targets,fp_length,hidden_layer=None):
     if hidden_layer is None:
         hidden_layer=fp_length
@@ -87,8 +93,11 @@ def nn_train_online(training_features,training_targets,fp_length,hidden_layer=No
     start=time.time()
     print 'TRAINING NEURAL NET...'
     for k in range(len(training_targets)):
+        if k%100000==0:
+            print 'FINISHED TRAINING '+str(k)+' INSTANCES'
         training_set=ClassificationDataSet(fp_length,1)
         training_set.appendLinked(training_features[k],[training_targets[k]])
+        training_set.nClasses=2
         training_set._convertToOneOfMany()
         trainer=BackpropTrainer(nn,training_set)
         trainer.train()
@@ -96,6 +105,7 @@ def nn_train_online(training_features,training_targets,fp_length,hidden_layer=No
     print 'FINISHED TRAINING...TOOK: '+str(time.time()-start)
     return trainer
 
+#For predicting on the competitions' test set
 def get_test_features(mapper):
     start=time.time()
     print 'PARSING TEST FILE...'
@@ -117,7 +127,8 @@ def get_test_features(mapper):
     print 'Testing Set Size: '+str(len(test_cases))
     return test_id , test_cases
 
-def perform_cv(mapper,TestingPercent,CV_Number,RF_Trained=None,ET_Trained=None,NN_Trained=None):
+#method for performing CV
+def perform_cv(mapper,TestingPercent,CV_Number,fp_length,RF_Trained=None,ET_Trained=None,NN_Trained=None):
 
     RF_ERROR=[]
     ET_ERROR=[]
@@ -145,7 +156,7 @@ def perform_cv(mapper,TestingPercent,CV_Number,RF_Trained=None,ET_Trained=None,N
 
         #computing log loss on test set for NN
         if NN_Trained is not None:
-            NN_probs=get_probs_from_nn(NN_Trained,testing_features)
+            NN_probs=get_probs_from_nn(NN_Trained,testing_features,fp_length)
             nnerror=log_loss(testing_targets,NN_probs)
             print 'NN LOSS: '+str(nnerror)
             NN_ERROR.append(nnerror)
@@ -162,7 +173,7 @@ def perform_cv(mapper,TestingPercent,CV_Number,RF_Trained=None,ET_Trained=None,N
 
 
 
-
+#Main method for performing
 def build_and_run_model(CV=True,CV_Number=5,RandomForest=True,RF_Estimators=25,ExtraTrees=False,NeuralNet=False,NeuralNetTraining='Full',
                         TrainingPercent=.3,TestingPercent=.1,WriteOutput=False,WriteOutputType=None,FingerPrint=None):
 
@@ -189,7 +200,7 @@ def build_and_run_model(CV=True,CV_Number=5,RandomForest=True,RF_Estimators=25,E
 
     #Setup Feature Mapper (maps categories for each click/non-click to a binary feature vector)
     mapper=feature_builder(FingerPrint)
-    fplength=mapper.length
+    fplength=mapper.length+1
 
     #Build Training Set
     print 'BUILDING TRAINING SET...'
@@ -227,7 +238,7 @@ def build_and_run_model(CV=True,CV_Number=5,RandomForest=True,RF_Estimators=25,E
     if CV:
         print 'PERFORMING CROSS VALIDATIONS...'
         cv_start=time.time()
-        perform_cv(mapper,TestingPercent,CV_Number,RF_Trained=RF,ET_Trained=ET,NN_Trained=nn_trainer)
+        perform_cv(mapper,TestingPercent,CV_Number,fplength,RF_Trained=RF,ET_Trained=ET,NN_Trained=nn_trainer)
         print 'FINISHED PERFORMING CV...TOOK: '+str(time.time()-cv_start)
 
     #If Writing the output
@@ -262,8 +273,8 @@ def build_and_run_model(CV=True,CV_Number=5,RandomForest=True,RF_Estimators=25,E
                 nnprobs=get_probs_from_nn(nn_trainer,cases,fplength)
                 write_to_submission(test_ids,nnprobs)
 
-    print '.......FINISHED.....'
+    print '.......FINISHED........'
     print 'TOTAL TIME USED: '+str(time.time()-process_start)
 
 
-build_and_run_model(RandomForest=False,NeuralNet=True,NeuralNetTraining='online',TrainingPercent=.1,TestingPercent=.01,FingerPrint=['banner','c18','c19'])
+build_and_run_model(RandomForest=False,NeuralNet=True,NeuralNetTraining='online',TrainingPercent=.025,TestingPercent=.01,FingerPrint=['banner','c18','c19'])
