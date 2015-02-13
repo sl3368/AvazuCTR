@@ -12,8 +12,6 @@ from sklearn.metrics import log_loss
 from build_features import feature_builder
 
 
-#TODO: Run models on more balanced training set
-#TODO: Isolate where errors are being made
 def write_to_submission(ids,probs):
     print 'WRITING TO FILE...'
     out=open('predict.txt','w')
@@ -108,6 +106,7 @@ def nn_train_online(training_features,training_targets,fp_length,hidden_layer=No
 #For predicting on the competitions' test set
 def get_test_features(mapper):
     start=time.time()
+    mapper.missing=0
     print 'PARSING TEST FILE...'
     test_cases=[]
     test_id=[]
@@ -125,6 +124,7 @@ def get_test_features(mapper):
             test_id.append(comps[0])
     print 'DONE PARSING TEST FILE...TOOK: '+str(time.time()-start)
     print 'Testing Set Size: '+str(len(test_cases))
+    print 'MISSING FPs: '+str(mapper.missing)
     return test_id , test_cases
 
 #method for performing CV
@@ -219,6 +219,7 @@ def build_and_run_model(CV=True,CV_Number=5,RandomForest=True,RF_Estimators=25,E
         RF=RandomForestClassifier(n_estimators=RF_Estimators)
         RF.fit(training_features,training_targets)
         print 'DONE TRAINING MODEL...TOOK: '+str(time.time()-rf_start)
+        print 'MISSING FROM FP: '+str(mapper.missing)
     if ExtraTrees:
         print 'TRAINING EXTRA TREES MODEL...'
         etstart=time.time()
@@ -276,5 +277,5 @@ def build_and_run_model(CV=True,CV_Number=5,RandomForest=True,RF_Estimators=25,E
     print '.......FINISHED........'
     print 'TOTAL TIME USED: '+str(time.time()-process_start)
 
-
-build_and_run_model(RandomForest=False,NeuralNet=True,NeuralNetTraining='online',TrainingPercent=.025,TestingPercent=.01,FingerPrint=['banner','c18','c19'])
+#TODO:Write main with arguments parser
+build_and_run_model(CV=False,RandomForest=True,NeuralNet=False,NeuralNetTraining='online',TrainingPercent=.10,TestingPercent=.05,FingerPrint=['banner','c18','combos'],WriteOutput=True,WriteOutputType='RF')

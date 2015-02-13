@@ -15,7 +15,7 @@ class feature_builder:
 
     def __init__(self,feature_list=None):
         self.feature_dict={}
-
+        self.missing=0
         #if the list of features is none, then do all
         if feature_list is None:
             self.feature_dict=defaultdict(lambda: True)
@@ -70,6 +70,15 @@ class feature_builder:
         self.c19_map={}
         self.c20_map={}
         self.c21_map={}
+        self.combo_map={}
+
+        #ranged probabilities
+        self.device_id_clicked=defaultdict(int)
+        self.device_id_not_clicked=defaultdict(int)
+        self.device_ip_clicked=defaultdict(int)
+        self.device_ip_not_clicked=defaultdict(int)
+        self.device_both_clicked=defaultdict(int)
+        self.device_both_not_clicked=defaultdict(int)
 
         #length
         self.length=0
@@ -78,6 +87,7 @@ class feature_builder:
         print 'BUILDING SETS..'
         i=0
         start=time.time()
+        last=time.time()
         with open('train') as f:
             for line in f:
                 if i==0:
@@ -129,10 +139,21 @@ class feature_builder:
                     self.c20.update([comps[22]])
                 if self.feature_dict['c21']:
                     self.c21.update([comps[23]])
+                if self.feature_dict['combos']:
+                    both=tuple([comps[11],comps[12]])
+                    if int(comps[1])==1:
+                        self.device_id_clicked[comps[11]]+=1
+                        self.device_ip_clicked[comps[12]]+=1
+                        self.device_both_clicked[both]+=1
+                    else:
+                        self.device_id_not_clicked[comps[11]]+=1
+                        self.device_ip_not_clicked[comps[12]]+=1
+                        self.device_both_not_clicked[both]+=1
 
                 i+=1
-                if i%10000000==0:
-                    print 'PARSED '+str(i)+' LINES....'
+                if i%1000000==0:
+                    print 'PARSED '+str(i)+' LINES....TOOK: '+str(time.time()-last)
+                    last=time.time()
 
         print 'FINISHED PARSING TRAINING FILE FOR SETS....TOOK: '+str(time.time()-start)
 
@@ -249,6 +270,58 @@ class feature_builder:
             if self.feature_dict['c21']:
                 self.c21_map[c]=self.length
                 self.length+=1
+        #combos
+        if self.feature_dict['combos']:
+            self.combo_map['high']=self.length
+            self.length+=1
+            self.combo_map['low']=self.length
+            self.length+=1
+
+        if self.feature_dict['id_ip']:
+            self.combo_map['high-did']=self.length
+            self.length+=1
+            self.combo_map['low-did']=self.length
+            self.length+=1
+            self.combo_map['high-ip']=self.length
+            self.length+=1
+            self.combo_map['low-ip']=self.length
+            self.length+=1
+
+        self.device_both_rates={}
+        for key, value in self.device_both_clicked.iteritems():
+            hits=float(value)
+            miss=float(0.0)
+            if key in self.device_both_not_clicked:
+                miss=self.device_both_not_clicked[key]
+            rate=float(hits/(hits+miss))
+            self.device_both_rates[key]=rate
+        for key, value in self.device_both_not_clicked.iteritems():
+            if key not in self.device_both_rates:
+                self.device_both_rates[key]=float(0.0)
+
+        self.device_id_rates={}
+        for key, value in self.device_id_clicked.iteritems():
+            hits=float(value)
+            miss=float(0.0)
+            if key in self.device_id_not_clicked:
+                miss=self.device_id_not_clicked[key]
+            rate=float(hits/(hits+miss))
+            self.device_id_rates[key]=rate
+        for key, value in self.device_id_not_clicked.iteritems():
+            if key not in self.device_id_rates:
+                self.device_id_rates[key]=float(0.0)
+
+        self.device_ip_rates={}
+        for key, value in self.device_ip_clicked.iteritems():
+            hits=float(value)
+            miss=float(0.0)
+            if key in self.device_ip_not_clicked:
+                miss=self.device_ip_not_clicked[key]
+            rate=float(hits/(hits+miss))
+            self.device_ip_rates[key]=rate
+        for key, value in self.device_ip_not_clicked.iteritems():
+            if key not in self.device_ip_rates:
+                self.device_ip_rates[key]=float(0.0)
 
         print 'FINISHED CONSTRUCTING DICTIONARIES...TOOK: '+str(time.time()-start)
         print 'FINGERPRINT LENGTH: '+str(self.length)
@@ -300,4 +373,18 @@ class feature_builder:
             feature_vector[self.c20_map[comps[21+Train]]]=1
         if self.feature_dict['c21']:
             feature_vector[self.c21_map[comps[22+Train]]]=1
+        if self.feature_dict['combos']:
+            both=tuple([comps[10+Train],comps[11+Train]])
+            if both in self.device_both_rates:
+                if self.device_both_rates[both]>=.5:
+                    feature_vector[self.combo_map['high']]=1
+                elif self.device_both_rates[both]<=.14:
+                    feature_vector[self.combo_map['low']]=1
+            else:
+                self.missing+=1
+
+
         return feature_vector
+
+    def reset_missing(self):
+        self.missing=0

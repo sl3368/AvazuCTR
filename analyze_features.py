@@ -2,7 +2,105 @@ __author__ = 'Lal'
 
 import time
 from collections import defaultdict
+import numpy as np
 
+def examine_device_behaviour():
+
+
+    device_id=set()
+    device_ip=set()
+    device_id_ip=set()
+
+    device_id_clicked=defaultdict(int)
+    device_id_not_clicked=defaultdict(int)
+
+    device_ip_clicked=defaultdict(int)
+    device_ip_not_clicked=defaultdict(int)
+
+    device_both_clicked=defaultdict(int)
+    device_both_not_clicked=defaultdict(int)
+
+    print 'STARTING PARSING'
+
+    i=0
+    last=time.time()
+
+    with open('train') as f:
+        for line in f:
+            if i==0:
+                i=i+1
+                continue
+            comps=line.rstrip().split(',')
+            device_id.update([comps[11]])
+            device_ip.update([comps[12]])
+            both=tuple([comps[11],comps[12]])
+            device_id_ip.update(both)
+
+            if int(comps[1])==1:
+                device_id_clicked[comps[11]]+=1
+                device_ip_clicked[comps[12]]+=1
+                device_both_clicked[both]+=1
+            else:
+                device_id_not_clicked[comps[11]]+=1
+                device_ip_not_clicked[comps[12]]+=1
+                device_both_not_clicked[both]+=1
+
+            i=i+1
+
+            if i%1000000==0:
+                print 'PARSED '+str(i)+' LINES....TOOK: '+str(time.time()-last)
+                last=time.time()
+
+
+    print 'DONE PARSING-NOW SHOWING RESULTS...'
+
+    print 'DEVICE ID: '+str(len(device_id))
+    print 'DEVICE IP: '+str(len(device_ip))
+    print 'BOTH: '+str(len(device_id_ip))
+
+    print 'CAlCULATING DISTRIBUTIONS...'
+    start=time.time()
+
+    device_id_rates=[]
+    for key, value in device_id_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in device_id_not_clicked:
+            miss=device_id_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        device_id_rates.append(rate)
+    np_id_rates=np.array(device_id_rates)
+    print 'DEVICE ID MEAN: '+str(np_id_rates.mean())+' STANDARD DEV.: '+str(np_id_rates.std())
+    print 'LENGTH: '+str(len(np_id_rates))
+    print 'TOOK: '+str(time.time()-start)
+    start=time.time()
+
+    device_ip_rates=[]
+    for key, value in device_ip_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in device_ip_not_clicked:
+            miss=device_ip_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        device_ip_rates.append(rate)
+    np_ip_rates=np.array(device_id_rates)
+    print 'DEVICE IP MEAN: '+str(np_ip_rates.mean())+' STANDARD DEV.: '+str(np_ip_rates.std())
+    print 'LENGTH: '+str(len(np_ip_rates))
+    print 'TOOK: '+str(time.time()-start)
+    start=time.time()
+
+    device_both_rates=[]
+    for key, value in device_both_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in device_both_not_clicked:
+            miss=device_both_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        device_both_rates.append(rate)
+    np_both_rates=np.array(device_both_rates)
+    print 'BOTH MEAN: '+str(np_both_rates.mean())+' STANDARD DEV.: '+str(np_both_rates.std())
+    print 'LENGTH: '+str(len(np_both_rates))
+    print 'TOOK: '+str(time.time()-start)
 
 def get_features_from_set():
 
@@ -80,8 +178,8 @@ def get_features_from_set():
             app_id.update([comps[8]])
             app_domain.update([comps[9]])
             app_category.update([comps[10]])
-            #device_id.update([comps[11]])
-            #device_ip.update([comps[12]])
+            device_id.update([comps[11]])
+            device_ip.update([comps[12]])
             device_model.update([comps[13]])
             device_type.update([comps[14]])
             device_conn_type.update([comps[15]])
@@ -94,25 +192,25 @@ def get_features_from_set():
             c20.update([comps[22]])
             c21.update([comps[23]])
 
-            # if int(comps[1])==1:
-            #     count_click=count_click+1
-            #     ad_id_clicked[comps[0]]=ad_id_clicked[comps[0]]+1
-            #     banner_position_clicked[comps[4]]=banner_position_clicked[comps[4]]+1
-            #     c1_clicked[comps[3]]=c1_clicked[comps[3]]+1
-            #     c15_clicked[comps[17]]=c15_clicked[comps[17]]+1
-            #     c16_clicked[comps[18]]=c16_clicked[comps[18]]+1
-            #     c18_clicked[comps[20]]+=1
-            #     c19_clicked[comps[21]]+=1
-            #     device_id_clicked[comps[11]]+=1
-            # else:
-            #     ad_id_not_clicked[comps[0]]=ad_id_clicked[comps[0]]+1
-            #     banner_position_not_clicked[comps[4]]=banner_position_not_clicked[comps[4]]+1
-            #     c1_not_clicked[comps[3]]=c1_clicked[comps[3]]+1
-            #     c15_not_clicked[comps[17]]=c15_clicked[comps[17]]+1
-            #     c16_not_clicked[comps[18]]=c16_clicked[comps[18]]+1
-            #     device_id_not_clicked[comps[11]]+=1
-            #     c18_not_clicked[comps[20]]+=1
-            #     c19_not_clicked[comps[21]]+=1
+            if int(comps[1])==1:
+                count_click=count_click+1
+                ad_id_clicked[comps[0]]=ad_id_clicked[comps[0]]+1
+                banner_position_clicked[comps[4]]=banner_position_clicked[comps[4]]+1
+                c1_clicked[comps[3]]=c1_clicked[comps[3]]+1
+                c15_clicked[comps[17]]=c15_clicked[comps[17]]+1
+                c16_clicked[comps[18]]=c16_clicked[comps[18]]+1
+                c18_clicked[comps[20]]+=1
+                c19_clicked[comps[21]]+=1
+                device_id_clicked[comps[11]]+=1
+            else:
+                ad_id_not_clicked[comps[0]]=ad_id_clicked[comps[0]]+1
+                banner_position_not_clicked[comps[4]]=banner_position_not_clicked[comps[4]]+1
+                c1_not_clicked[comps[3]]=c1_clicked[comps[3]]+1
+                c15_not_clicked[comps[17]]=c15_clicked[comps[17]]+1
+                c16_not_clicked[comps[18]]=c16_clicked[comps[18]]+1
+                device_id_not_clicked[comps[11]]+=1
+                c18_not_clicked[comps[20]]+=1
+                c19_not_clicked[comps[21]]+=1
 
             i=i+1
 
@@ -260,133 +358,134 @@ def get_features_from_set():
     print 'STATS...'
     print 'NUMBER CLICKED...'+str(count_click)
 
-    # #ad id
-    # ad_id_rates=[]
-    # for key, value in ad_id_clicked.iteritems():
-    #     hits=float(value)
-    #     miss=float(0.0)
-    #     if key in ad_id_not_clicked:
-    #          miss=ad_id_not_clicked[key]
-    #     rate=float(hits/(hits+miss))
-    #     ad=(key,rate,hits,miss,hits+miss)
-    #     if hits>1 and miss>0:
-    #         ad_id_rates.append(ad)
-    # print 'NUMBER OF AD ID...'+str(len(ad_id_rates))
-    #
-    # device_id_rates=[]
-    # for key, value in device_id_clicked.iteritems():
-    #     hits=float(value)
-    #     miss=float(0.0)
-    #     if key in device_id_not_clicked:
-    #         miss=device_id_not_clicked[key]
-    #     rate=float(hits/(hits+miss))
-    #     ban=(key,rate,hits,miss,hits+miss)
-    #     if hits>2 and miss>0:
-    #         device_id_rates.append(ban)
-    # print 'NUMBER OF DEVICE ID...'+str(len(device_id_rates))
-    #
-    # #banner
-    # banner_rates=[]
-    # for key,value in banner_position_clicked.iteritems():
-    #     hits=float(value)
-    #     miss=float(0.0)
-    #     if key in banner_position_not_clicked:
-    #         miss=banner_position_not_clicked[key]
-    #     rate=float(hits/(hits+miss))
-    #     ban=(key,rate,hits,miss,hits+miss)
-    #     banner_rates.append(ban)
-    #
-    # c1_rates=[]
-    # for key, value in c1_clicked.iteritems():
-    #     hits=float(value)
-    #     miss=float(0.0)
-    #     if key in c1_not_clicked:
-    #         miss=c1_not_clicked[key]
-    #     rate=float(hits/(hits+miss))
-    #     instance=(key,rate,hits,miss,hits+miss)
-    #     c1_rates.append(instance)
-    #
-    # c15_rates=[]
-    # for key,value in c15_clicked.iteritems():
-    #     hits=float(value)
-    #     miss=float(0.0)
-    #     if key in c15_not_clicked:
-    #         miss=c15_not_clicked[key]
-    #     rate=float(hits/(hits+miss))
-    #     instance=(key,rate,hits,miss,hits+miss)
-    #     c15_rates.append(instance)
-    #
-    # c16_rates=[]
-    # for key, value in c16_clicked.iteritems():
-    #     hits=float(value)
-    #     miss=float(0.0)
-    #     if key in c16_not_clicked:
-    #         miss=c16_not_clicked[key]
-    #     rate=float(hits/(hits+miss))
-    #     instance=(key,rate,hits,miss,hits+miss)
-    #     c16_rates.append(instance)
-    #
-    # c18_rates=[]
-    # for key,value in c18_clicked.iteritems():
-    #     hits=float(value)
-    #     miss=float(0.0)
-    #     if key in c18_not_clicked:
-    #         miss=c18_not_clicked[key]
-    #     rate=float(hits/(hits+miss))
-    #     instance=(key,rate,hits,miss,hits+miss)
-    #     c18_rates.append(instance)
-    #
-    # c19_rates=[]
-    # for key,value in c19_clicked.iteritems():
-    #     hits=float(value)
-    #     miss=float(0.0)
-    #     if key in c19_not_clicked:
-    #         miss=c19_not_clicked[key]
-    #     rate=float(hits/(hits+miss))
-    #     instance=(key,rate,hits,miss,hits+miss)
-    #     c19_rates.append(instance)
+    #ad id
+    ad_id_rates=[]
+    for key, value in ad_id_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in ad_id_not_clicked:
+             miss=ad_id_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        ad=(key,rate,hits,miss,hits+miss)
+        if hits>1 and miss>0:
+            ad_id_rates.append(ad)
+    print 'NUMBER OF AD ID...'+str(len(ad_id_rates))
 
-    # ad_id_rates=sorted(ad_id_rates,key=lambda x:x[4], reverse=True)
-    # device_id_rates=sorted(device_id_rates,key=lambda x:x[4],reverse=True)
-    # banner_rates=sorted(banner_rates,key=lambda x:x[1], reverse=True)
-    # c1_rates=sorted(c1_rates,key=lambda x:x[1], reverse=True)
-    # c15_rates=sorted(c15_rates,key=lambda x:x[1], reverse=True)
-    # c16_rates=sorted(c16_rates,key=lambda x:x[1], reverse=True)
-    # c18_rates=sorted(c18_rates,key=lambda x:x[1], reverse=True)
-    # c19_rates=sorted(c19_rates,key=lambda x:x[1], reverse=True)
-    #
-    # print 'BANNER RATES...'
-    # for rate in banner_rates:
-    #     print rate
-    #
-    # print 'C1 RATES...'
-    # for rate in c1_rates:
-    #     print rate
-    #
-    # print 'C15 RATES...'
-    # for rate in c15_rates:
-    #     print rate
-    #
-    # print 'C16 RATES...'
-    # for rate in c16_rates:
-    #     print rate
-    #
-    # print 'C18 RATES...'
-    # for rate in c18_rates:
-    #     print rate
-    #
-    # print 'C19 RATES...'
-    # for rate in c19_rates:
-    #     print rate
-    #
-    # print 'DEVICE ID RATES...(TOP)'
-    # for t in range(250):
-    #     print device_id_rates[t]
-    #
-    # print 'AD ID RATES...(TOP)'
-    # for t in range(len(ad_id_rates)):
-    #     print ad_id_rates[t]
+    device_id_rates=[]
+    for key, value in device_id_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in device_id_not_clicked:
+            miss=device_id_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        ban=(key,rate,hits,miss,hits+miss)
+        if hits>2 and miss>0:
+            device_id_rates.append(ban)
+    print 'NUMBER OF DEVICE ID...'+str(len(device_id_rates))
+
+    #banner
+    banner_rates=[]
+    for key,value in banner_position_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in banner_position_not_clicked:
+            miss=banner_position_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        ban=(key,rate,hits,miss,hits+miss)
+        banner_rates.append(ban)
+
+    c1_rates=[]
+    for key, value in c1_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in c1_not_clicked:
+            miss=c1_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        instance=(key,rate,hits,miss,hits+miss)
+        c1_rates.append(instance)
+
+    c15_rates=[]
+    for key,value in c15_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in c15_not_clicked:
+            miss=c15_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        instance=(key,rate,hits,miss,hits+miss)
+        c15_rates.append(instance)
+
+    c16_rates=[]
+    for key, value in c16_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in c16_not_clicked:
+            miss=c16_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        instance=(key,rate,hits,miss,hits+miss)
+        c16_rates.append(instance)
+
+    c18_rates=[]
+    for key,value in c18_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in c18_not_clicked:
+            miss=c18_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        instance=(key,rate,hits,miss,hits+miss)
+        c18_rates.append(instance)
+
+    c19_rates=[]
+    for key,value in c19_clicked.iteritems():
+        hits=float(value)
+        miss=float(0.0)
+        if key in c19_not_clicked:
+            miss=c19_not_clicked[key]
+        rate=float(hits/(hits+miss))
+        instance=(key,rate,hits,miss,hits+miss)
+        c19_rates.append(instance)
+
+    ad_id_rates=sorted(ad_id_rates,key=lambda x:x[4], reverse=True)
+    device_id_rates=sorted(device_id_rates,key=lambda x:x[4],reverse=True)
+    banner_rates=sorted(banner_rates,key=lambda x:x[1], reverse=True)
+    c1_rates=sorted(c1_rates,key=lambda x:x[1], reverse=True)
+    c15_rates=sorted(c15_rates,key=lambda x:x[1], reverse=True)
+    c16_rates=sorted(c16_rates,key=lambda x:x[1], reverse=True)
+    c18_rates=sorted(c18_rates,key=lambda x:x[1], reverse=True)
+    c19_rates=sorted(c19_rates,key=lambda x:x[1], reverse=True)
+
+    print 'BANNER RATES...'
+    for rate in banner_rates:
+        print rate
+
+    print 'C1 RATES...'
+    for rate in c1_rates:
+        print rate
+
+    print 'C15 RATES...'
+    for rate in c15_rates:
+        print rate
+
+    print 'C16 RATES...'
+    for rate in c16_rates:
+        print rate
+
+    print 'C18 RATES...'
+    for rate in c18_rates:
+        print rate
+
+    print 'C19 RATES...'
+    for rate in c19_rates:
+        print rate
+
+    print 'DEVICE ID RATES...(TOP)'
+    for t in range(250):
+        print device_id_rates[t]
+
+    print 'AD ID RATES...(TOP)'
+    for t in range(len(ad_id_rates)):
+        print ad_id_rates[t]
 
     print 'DONE....'
 
-get_features_from_set()
+#get_features_from_set()
+examine_device_behaviour()
